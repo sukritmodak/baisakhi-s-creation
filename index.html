@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Baisakhi's Creation</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f5f8fb; --card:#ffffff; --accent:#0b63b8; --accent-2:#0f4f8a;
+      --muted:#6b7280; --radius:12px; --shadow:0 8px 30px rgba(15,23,42,0.06);
+      font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#eef6ff 0%,var(--bg) 100%);color:#0b1220;min-height:100vh}
+    header{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:18px;text-align:center}
+    header h1{margin:0;font-size:20px}
+    .wrap{max-width:1200px;margin:20px auto;padding:16px}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .btn{background:var(--accent);color:#fff;padding:10px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+    .btn.ghost{background:transparent;color:var(--accent);border:1px solid #dbeafc}
+    .layout{display:grid;grid-template-columns:1fr 380px;gap:18px}
+    @media (max-width:980px){ .layout{grid-template-columns:1fr} }
+    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+    .products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    @media (max-width:1100px){ .products-grid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:640px){ .products-grid{grid-template-columns:1fr} }
+    .product{border-radius:10px;padding:12px;border:1px solid #eef6ff;background:linear-gradient(180deg,#fff,#fbfdff);display:flex;flex-direction:column;gap:8px}
+    .product img{width:100%;height:160px;object-fit:cover;border-radius:8px}
+    .product h3{margin:0;font-size:16px}
+    .product .desc{font-size:13px;color:var(--muted);min-height:36px}
+    .product .price{font-weight:800;margin-top:6px}
+    .product .actions{display:flex;gap:8px;align-items:center;margin-top:auto}
+    .cart-list{max-height:360px;overflow:auto;margin-top:12px}
+    .cart-item{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;border:1px solid #f1f5f9;margin-bottom:10px}
+    .cart-item img{width:72px;height:54px;object-fit:cover;border-radius:6px}
+    .summary{margin-top:12px;padding:12px;border-radius:10px;background:#fbfdff;border:1px solid #eef6ff}
+    .small{font-size:13px;color:var(--muted)}
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:flex;align-items:center;justify-content:center;z-index:60}
+    .modal{width:92%;max-width:760px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 20px 60px rgba(2,6,23,0.4)}
+    .option-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .option-btn{padding:8px 10px;border-radius:8px;border:1px solid #e6eef9;background:#fff;cursor:pointer}
+    .option-btn.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;border-color:transparent}
+    .toast{position:fixed;right:18px;bottom:18px;background:#111;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 30px rgba(2,6,23,0.3);z-index:80}
+    .admin-badge{background:#fff;color:var(--accent);padding:6px 8px;border-radius:999px;border:1px solid #dbeafc;font-weight:700}
+    .admin-panel{display:none}
+    .admin-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .file-preview{max-width:100%;height:auto;border-radius:8px;margin-top:8px}
+    .order-card{padding:10px;border-radius:10px;border:1px solid #eef6ff;margin-bottom:10px}
+  </style>
+
+  <!-- QR code library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs2@0.0.2/qrcode.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Baisakhi's Creation</h1>
+  </header>
+
+  <main class="wrap">
+    <div class="toolbar">
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="admin-badge">RealShop</div>
+        <div class="small">Simple client-side store</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="sellerLoginBtn" class="btn ghost">Seller Login</button>
+        <button id="sellerLogoutBtn" class="btn ghost" style="display:none">Logout</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- Left: Products -->
+      <section class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h2 style="margin:0">Products</h2>
+            <div class="small">Browse and add to cart</div>
+          </div>
+          <div>
+            <input id="searchInput" placeholder="Search products..." style="padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+          </div>
+        </div>
+
+        <div id="productsGrid" class="products-grid" style="margin-top:14px"></div>
+      </section>
+
+      <!-- Right: Cart & Admin -->
+      <aside>
+        <div class="card">
+          <h3 style="margin:0">Your Cart</h3>
+          <div class="small">Change quantity or remove items</div>
+          <div id="cartList" class="cart-list"></div>
+
+          <div class="summary">
+            <div style="display:flex;justify-content:space-between"><div class="small">Subtotal</div><div id="subtotal" class="small">₹0.00</div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px"><div class="small">Shipping</div><div id="shipping" class="small">₹0.00</div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;font-weight:900"><div>Total</div><div id="total">₹0.00</div></div>
+
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button id="checkoutBtn" class="btn" style="flex:1">Checkout (UPI)</button>
+              <button id="clearCartBtn" class="btn ghost">Clear</button>
+            </div>
+
+            <div id="paymentArea" style="display:none;margin-top:12px">
+              <div class="small">Scan QR or click link on mobile to pay</div>
+              <div id="upiUri" class="small" style="word-break:break-all;margin-top:8px"></div>
+              <div id="qrcode" style="margin-top:10px" class="center"></div>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button id="copyUri" class="btn ghost small">Copy UPI Link</button>
+                <button id="confirmPaid" class="btn small">I Paid (Confirm)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin panel (visible only after seller login) -->
+        <div class="card admin-panel" id="adminPanel" style="margin-top:12px">
+          <h3 style="margin:0">Seller Panel</h3>
+          <div class="small">Add / edit / delete products and update UPI (seller only)</div>
+
+          <div style="margin-top:10px" class="admin-controls">
+            <button id="openAddProduct" class="btn small">Add Product</button>
+            <button id="manageProducts" class="btn ghost small">Manage Products</button>
+            <button id="editUpi" class="btn ghost small">Edit UPI</button>
+          </div>
+
+          <div id="adminArea" style="margin-top:12px"></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div id="modalRoot"></div>
+  <div id="toast" class="toast" style="display:none"></div>
+
+<script>
+/* =========================
+   RealShop with Seller Panel (client-side)
+   - Products & UPI stored in localStorage keys:
+     rs_products, rs_upi, rs_orders, rs_cart, rs_seller_pass
+   - controlled from Sukrit's Creation
+   - Buyers cannot access admin controls unless logged in
+   ========================= */
+
+/* Utilities */
+const $ = id => document.getElementById(id);
+const formatINR = n => '₹' + Number(n).toFixed(2);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const toast = (msg, ms=2200) => { const t=$('toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none', ms); };
+const placeholder = () => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'><rect width='100%' height='100%' fill='#eef6ff'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#cbd5e1' font-size='20'>No Image</text></svg>`);
+const escapeHtml = s => (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+/* Storage keys & defaults */
+const KEY_PRODUCTS = 'rs_products';
+const KEY_UPI = 'rs_upi';
+const KEY_ORDERS = 'rs_orders';
+const KEY_CART = 'rs_cart';
+const KEY_SELLER_PASS = 'rs_seller_pass'; // stored base64 for minimal obfuscation
+
+function readJSON(k, fallback) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } }
+function writeJSON(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+/* Initialize default data if missing */
+if (!localStorage.getItem(KEY_PRODUCTS)) {
+  // sample products
+  const sample = [
+    { id:'p1', title:'Classic Cotton T-Shirt', description:'Soft 100% cotton tee.', price:499.00, image:'', options:[{name:'Color',values:['Black','White','Navy']},{name:'Size',values:['S','M','L','XL']}] },
+    { id:'p2', title:'Custom Ceramic Mug', description:'350ml ceramic mug.', price:249.00, image:'', options:[{name:'Finish',values:['Matte','Glossy']}] },
+    { id:'p3', title:'Sticker Pack (10 pcs)', description:'Durable vinyl stickers.', price:149.00, image:'', options:[] }
+  ];
+  writeJSON(KEY_PRODUCTS, sample);
+}
+if (!localStorage.getItem(KEY_UPI)) {
+  writeJSON(KEY_UPI, { pa:'merchant@upi', pn:'RealShop' });
+}
+if (!localStorage.getItem(KEY_ORDERS)) writeJSON(KEY_ORDERS, []);
+if (!localStorage.getItem(KEY_CART)) writeJSON(KEY_CART, []);
+if (!localStorage.getItem(KEY_SELLER_PASS)) {
+  // default seller password: seller123 (owner should change after first login)
+  localStorage.setItem(KEY_SELLER_PASS, btoa('seller123'));
+}
+
+/* State */
+let products = readJSON(KEY_PRODUCTS, []);
+let upi = readJSON(KEY_UPI, { pa:'', pn:'' });
+let orders = readJSON(KEY_ORDERS, []);
+let cart = readJSON(KEY_CART, []);
+let sellerLoggedIn = false;
+
+/* DOM refs */
+const productsGrid = $('productsGrid');
+const cartList = $('cartList');
+const subtotalEl = $('subtotal');
+const shippingEl = $('shipping');
+const totalEl = $('total');
+const paymentArea = $('paymentArea');
+const upiUriEl = $('upiUri');
+const qrcodeEl = $('qrcode');
+const adminPanel = $('adminPanel');
+const sellerLoginBtn = $('sellerLoginBtn');
+const sellerLogoutBtn = $('sellerLogoutBtn');
+const modalRoot = $('modalRoot');
+
+/* Render functions */
+function renderProducts(filter='') {
+  productsGrid.innerHTML = '';
+  const q = (filter||'').toLowerCase();
+  const list = products.filter(p => !q || (p.title + ' ' + p.description).toLowerCase().includes(q));
+  if (!list.length) { productsGrid.innerHTML = `<div class="card empty">No products found</div>`; return; }
+  list.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'product';
+    el.innerHTML = `
+      <img src="${p.image || placeholder()}" alt="${escapeHtml(p.title)}" />
+      <div>
+        <h3>${escapeHtml(p.title)}</h3>
+        <div class="desc">${escapeHtml(p.description)}</div>
+        <div class="price">${formatINR(p.price)}</div>
+        <div class="actions"><button class="btn small" data-id="${p.id}">View & Add</button></div>
+      </div>
+    `;
+    productsGrid.appendChild(el);
+    el.querySelector('button').addEventListener('click', () => openProductModal(p.id));
+  });
+}
+
+function renderCart() {
+  cartList.innerHTML = '';
+  if (!cart.length) { cartList.innerHTML = `<div class="small">Cart is empty</div>`; updateTotals(); return; }
+  cart.forEach(item => {
+    const p = products.find(x => x.id === item.productId);
+    const el = document.createElement('div');
+    el.className = 'cart-item';
+    el.innerHTML = `
+      <img src="${p.image || placeholder()}" alt="${escapeHtml(p.title)}" />
+      <div style="flex:1">
+        <div style="font-weight:800">${escapeHtml(p.title)}</div>
+        <div class="small">${Object.entries(item.selectedOptions||{}).map(([k,v])=>escapeHtml(k)+': '+escapeHtml(v)).join(' • ')}</div>
+        <div style="margin-top:8px" class="small">Qty: <input type="number" min="1" value="${item.qty}" data-cartid="${item.cartId}" style="width:70px;padding:6px;border-radius:6px;border:1px solid #e6eef9" /></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:800">${formatINR(p.price * item.qty)}</div>
+        <div style="margin-top:8px"><button class="btn ghost small" data-remove="${item.cartId}">Remove</button></div>
+      </div>
+    `;
+    cartList.appendChild(el);
+    el.querySelector('input[type=number]').addEventListener('change', (e) => {
+      const newQty = Math.max(1, parseInt(e.target.value||'1',10));
+      const id = e.target.getAttribute('data-cartid');
+      const it = cart.find(c => c.cartId === id);
+      if (it) { it.qty = newQty; saveCart(); renderCart(); }
+    });
+    el.querySelector('button[data-remove]').addEventListener('click', () => {
+      const id = el.querySelector('button[data-remove]').getAttribute('data-remove');
+      cart = cart.filter(c => c.cartId !== id);
+      saveCart(); renderCart();
+    });
+  });
+  updateTotals();
+}
+
+function updateTotals() {
+  const subtotal = cart.reduce((s,it) => {
+    const p = products.find(x => x.id === it.productId);
+    return s + (p.price * it.qty);
+  }, 0);
+  const shipping = subtotal === 0 ? 0 : (subtotal > 999 ? 0 : 49);
+  const total = subtotal + shipping;
+  subtotalEl.textContent = formatINR(subtotal);
+  shippingEl.textContent = formatINR(shipping);
+  totalEl.textContent = formatINR(total);
+}
+
+/* Save/load */
+function saveProducts() { writeJSON(KEY_PRODUCTS, products); }
+function saveUpi() { writeJSON(KEY_UPI, upi); }
+function saveOrders() { writeJSON(KEY_ORDERS, orders); }
+function saveCart() { writeJSON(KEY_CART, cart); }
+
+/* Product modal for buyers (read-only product data, choose options) */
+function openProductModal(productId) {
+  const p = products.find(x => x.id === productId);
+  if (!p) return;
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop" role="dialog" aria-modal="true">
+      <div class="modal">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><h3 style="margin:0">${escapeHtml(p.title)}</h3><div class="small">${escapeHtml(p.description)}</div></div>
+          <div><button id="closeModal" class="btn ghost small">Close</button></div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:260px"><img src="${p.image || placeholder()}" style="width:100%;height:320px;object-fit:cover;border-radius:8px" /></div>
+          <div style="flex:1;min-width:260px">
+            <div style="font-weight:800">${formatINR(p.price)}</div>
+            <div id="optionsArea"></div>
+            <label style="margin-top:10px">Quantity</label>
+            <input id="modalQty" type="number" min="1" value="1" style="width:100px;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button id="addCartBtn" class="btn">Add to Cart</button>
+              <button id="cancelBtn" class="btn ghost">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  modalRoot.style.display = 'block';
+  const optsArea = modalRoot.querySelector('#optionsArea');
+  const selected = {};
+  if (Array.isArray(p.options) && p.options.length) {
+    p.options.forEach(opt => {
+      const name = opt.name || opt;
+      const values = opt.values || (Array.isArray(opt) ? opt : []);
+      const wrap = document.createElement('div');
+      wrap.style.marginTop = '8px';
+      wrap.innerHTML = `<div style="font-weight:700">${escapeHtml(name)}</div>`;
+      const row = document.createElement('div'); row.className='option-row';
+      values.forEach(v => {
+        const btn = document.createElement('button'); btn.className='option-btn'; btn.textContent=v;
+        btn.addEventListener('click', () => { row.querySelectorAll('.option-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); selected[name]=v; });
+        row.appendChild(btn);
+      });
+      if (values.length) { selected[name]=values[0]; setTimeout(()=>row.querySelector('.option-btn').classList.add('active'),0); }
+      wrap.appendChild(row); optsArea.appendChild(wrap);
+    });
+  } else {
+    optsArea.innerHTML = `<div class="small">No options</div>`;
+  }
+  modalRoot.querySelector('#closeModal').addEventListener('click', closeModal);
+  modalRoot.querySelector('#cancelBtn').addEventListener('click', closeModal);
+  modalRoot.querySelector('#addCartBtn').addEventListener('click', () => {
+    const qty = Math.max(1, parseInt(modalRoot.querySelector('#modalQty').value||'1',10));
+    cart.push({ cartId: uid(), productId: p.id, qty, selectedOptions: selected });
+    saveCart(); renderCart(); toast('Added to cart'); closeModal();
+  });
+  function closeModal(){ modalRoot.innerHTML=''; modalRoot.style.display='none'; }
+}
+
+/* Checkout -> generate UPI URI & QR */
+$('checkoutBtn').addEventListener('click', () => {
+  if (!cart.length) { toast('Cart is empty'); return; }
+  if (!upi.pa) { toast('UPI not configured'); return; }
+  const subtotal = cart.reduce((s,it)=>{ const p=products.find(x=>x.id===it.productId); return s + (p.price*it.qty); },0);
+  const shipping = subtotal === 0 ? 0 : (subtotal > 999 ? 0 : 49);
+  const total = (subtotal + shipping).toFixed(2);
+  const note = `RealShop order (${cart.length} items)`;
+  const params = new URLSearchParams();
+  params.append('pa', upi.pa);
+  if (upi.pn) params.append('pn', upi.pn);
+  params.append('am', total);
+  params.append('cu', 'INR');
+  params.append('tn', note);
+  const upiUri = `upi://pay?${params.toString()}`;
+  $('paymentArea').style.display = 'block';
+  upiUriEl.textContent = upiUri;
+  qrcodeEl.innerHTML = '';
+  new QRCode(qrcodeEl, { text: upiUri, width:220, height:220 });
+  // Save order locally as pending
+  const order = { id: uid(), createdAt: new Date().toISOString(), items: cart.map(it=>({productId:it.productId,qty:it.qty,options:it.selectedOptions})), subtotal:subtotal.toFixed(2), shipping:shipping.toFixed(2), total, upiUri, status:'pending' };
+  orders.unshift(order); saveOrders(); renderOrders();
+  toast('UPI QR generated. Complete payment in your UPI app.');
+});
+
+/* Copy UPI link */
+$('copyUri').addEventListener('click', async () => {
+  const uri = upiUriEl.textContent;
+  if (!uri) { toast('No UPI link'); return; }
+  try { await navigator.clipboard.writeText(uri); toast('UPI link copied'); } catch { toast('Copy failed'); }
+});
+
+/* Confirm paid (manual) */
+$('confirmPaid').addEventListener('click', () => {
+  const pending = orders.find(o => o.status === 'pending');
+  if (!pending) { toast('No pending order'); return; }
+  pending.status = 'paid'; saveOrders();
+  cart = []; saveCart(); renderCart();
+  $('paymentArea').style.display = 'none';
+  renderOrders();
+  toast('Order marked paid (manual).');
+});
+
+/* Clear cart */
+$('clearCartBtn').addEventListener('click', () => { if (!confirm('Clear cart?')) return; cart=[]; saveCart(); renderCart(); $('paymentArea').style.display='none'; });
+
+/* Orders rendering */
+function renderOrders() {
+  const area = $('adminPanel').querySelector('#adminArea') || null;
+  // also show orders in admin area if logged in
+  const ordersArea = document.querySelectorAll('.order-card');
+  // We'll show orders in seller panel when logged in
+  if (sellerLoggedIn) {
+    const adminArea = $('adminArea');
+    adminArea.innerHTML = '<h4 style="margin-top:8px">Orders</h4>';
+    if (!orders.length) adminArea.innerHTML += '<div class="small">No orders yet</div>';
+    orders.forEach(o => {
+      const div = document.createElement('div'); div.className='order-card';
+      div.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong>Order ${o.id}</strong><div class="small">${new Date(o.createdAt).toLocaleString()}</div></div><div style="text-align:right"><div class="small">Status</div><div style="font-weight:800">${o.status}</div></div></div><div style="margin-top:8px" class="small">Items: ${o.items.map(i=>{ const p=products.find(x=>x.id===i.productId); return (p? p.title : i.productId) + ' x' + i.qty; }).join(', ')}</div>`;
+      adminArea.appendChild(div);
+    });
+  }
+}
+
+/* Seller login flow */
+sellerLoginBtn.addEventListener('click', () => {
+  // show login modal
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h3>Seller Login</h3>
+        <div class="small">Enter seller password to access admin controls.</div>
+        <label style="margin-top:10px">Password</label>
+        <input id="sellerPass" type="password" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button id="loginBtn" class="btn">Login</button>
+          <button id="closeLogin" class="btn ghost">Cancel</button>
+        </div>
+        <div class="small" style="margin-top:10px;color:var(--muted)">Default password on first run: <strong>seller123</strong>. Change it after login.</div>
+      </div>
+    </div>
+  `;
+  modalRoot.style.display = 'block';
+  modalRoot.querySelector('#closeLogin').addEventListener('click', closeModal);
+  modalRoot.querySelector('#loginBtn').addEventListener('click', () => {
+    const entered = modalRoot.querySelector('#sellerPass').value || '';
+    const stored = localStorage.getItem(KEY_SELLER_PASS) || btoa('seller123');
+    if (btoa(entered) === stored) {
+      sellerLoggedIn = true;
+      modalRoot.innerHTML = ''; modalRoot.style.display='none';
+      onSellerLogin();
+      toast('Seller logged in');
+    } else {
+      toast('Incorrect password');
+    }
+  });
+  function closeModal(){ modalRoot.innerHTML=''; modalRoot.style.display='none'; }
+});
+
+/* Seller logout */
+$('sellerLogoutBtn').addEventListener('click', () => {
+  if (!confirm('Logout seller?')) return;
+  sellerLoggedIn = false; onSellerLogout(); toast('Seller logged out');
+});
+
+/* On seller login: show admin panel and controls */
+function onSellerLogin() {
+  adminPanel.style.display = 'block';
+  sellerLoginBtn.style.display = 'none';
+  sellerLogoutBtn.style.display = 'inline-block';
+  renderAdminControls();
+  renderOrders();
+}
+
+/* On seller logout: hide admin panel */
+function onSellerLogout() {
+  adminPanel.style.display = 'none';
+  sellerLoginBtn.style.display = 'inline-block';
+  sellerLogoutBtn.style.display = 'none';
+  $('adminArea').innerHTML = '';
+}
+
+/* Admin controls: add product, manage products, edit UPI */
+function renderAdminControls() {
+  const adminArea = $('adminArea');
+  adminArea.innerHTML = '';
+  // Add product form
+  const addBtn = $('openAddProduct');
+  addBtn.onclick = () => openAddProductModal();
+  $('manageProducts').onclick = () => openManageProducts();
+  $('editUpi').onclick = () => openEditUpiModal();
+}
+
+/* Add product modal */
+function openAddProductModal() {
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h3>Add Product</h3>
+        <label style="margin-top:8px">Title</label>
+        <input id="newTitle" type="text" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <label style="margin-top:8px">Description</label>
+        <textarea id="newDesc" rows="3" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9"></textarea>
+        <label style="margin-top:8px">Price (INR)</label>
+        <input id="newPrice" type="number" step="0.01" style="width:120px;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <label style="margin-top:8px">Options JSON (e.g. [{"name":"Color","values":["Red","Blue"]}])</label>
+        <textarea id="newOptions" rows="3" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9"></textarea>
+        <label style="margin-top:8px">Image (optional)</label>
+        <input id="newImage" type="file" accept="image/*" />
+        <img id="previewImg" class="file-preview" style="display:none" />
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button id="saveProduct" class="btn">Save Product</button>
+          <button id="cancelProduct" class="btn ghost">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modalRoot.style.display = 'block';
+  const preview = modalRoot.querySelector('#previewImg');
+  modalRoot.querySelector('#newImage').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const data = await fileToDataUrl(f);
+    preview.src = data; preview.style.display = 'block';
+  });
+  modalRoot.querySelector('#cancelProduct').addEventListener('click', closeModal);
+  modalRoot.querySelector('#saveProduct').addEventListener('click', async () => {
+    const title = modalRoot.querySelector('#newTitle').value.trim();
+    const desc = modalRoot.querySelector('#newDesc').value.trim();
+    const price = parseFloat(modalRoot.querySelector('#newPrice').value || '0');
+    let options = [];
+    const raw = modalRoot.querySelector('#newOptions').value.trim();
+    if (raw) {
+      try { options = JSON.parse(raw); }
+      catch { toast('Options JSON invalid'); return; }
+    }
+    let imgData = '';
+    const f = modalRoot.querySelector('#newImage').files[0];
+    if (f) imgData = await fileToDataUrl(f);
+    const newP = { id: uid(), title, description: desc, price, image: imgData, options };
+    products.unshift(newP); saveProducts(); renderProducts(); closeModal(); toast('Product added');
+  });
+  function closeModal(){ modalRoot.innerHTML=''; modalRoot.style.display='none'; }
+}
+
+/* Manage products modal (edit/delete) */
+function openManageProducts() {
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h3>Manage Products</h3>
+        <div id="manageList" style="max-height:420px;overflow:auto;margin-top:8px"></div>
+        <div style="margin-top:12px;display:flex;gap:8px"><button id="closeManage" class="btn ghost">Close</button></div>
+      </div>
+    </div>
+  `;
+  modalRoot.style.display = 'block';
+  const list = modalRoot.querySelector('#manageList');
+  products.forEach(p => {
+    const div = document.createElement('div'); div.style.padding='8px'; div.style.borderBottom='1px solid #f1f5f9';
+    div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${escapeHtml(p.title)}</strong><div class="small">${escapeHtml(p.description)}</div></div><div style="display:flex;gap:8px"><button class="btn small" data-edit="${p.id}">Edit</button><button class="btn ghost small" data-del="${p.id}">Delete</button></div></div>`;
+    list.appendChild(div);
+  });
+  modalRoot.querySelectorAll('button[data-del]').forEach(b => b.addEventListener('click', () => {
+    const id = b.getAttribute('data-del');
+    if (!confirm('Delete product?')) return;
+    products = products.filter(x => x.id !== id); saveProducts(); renderProducts(); toast('Product deleted');
+    // refresh manage list
+    openManageProducts();
+  }));
+  modalRoot.querySelectorAll('button[data-edit]').forEach(b => b.addEventListener('click', () => {
+    const id = b.getAttribute('data-edit');
+    openEditProductModal(id);
+  }));
+  modalRoot.querySelector('#closeManage').addEventListener('click', () => { modalRoot.innerHTML=''; modalRoot.style.display='none'; });
+}
+
+/* Edit product modal */
+function openEditProductModal(productId) {
+  const p = products.find(x => x.id === productId);
+  if (!p) return;
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h3>Edit Product</h3>
+        <label>Title</label><input id="editTitle" type="text" value="${escapeHtml(p.title)}" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <label style="margin-top:8px">Description</label><textarea id="editDesc" rows="3" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9">${escapeHtml(p.description)}</textarea>
+        <label style="margin-top:8px">Price</label><input id="editPrice" type="number" step="0.01" value="${p.price}" style="width:120px;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <label style="margin-top:8px">Options JSON</label><textarea id="editOptions" rows="3" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9">${JSON.stringify(p.options||[])}</textarea>
+        <label style="margin-top:8px">Image (optional)</label><input id="editImage" type="file" accept="image/*" />
+        <img id="editPreview" class="file-preview" src="${p.image||''}" style="${p.image?'display:block':'display:none'}" />
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button id="saveEdit" class="btn">Save</button>
+          <button id="cancelEdit" class="btn ghost">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modalRoot.style.display='block';
+  const preview = modalRoot.querySelector('#editPreview');
+  modalRoot.querySelector('#editImage').addEventListener('change', async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const data = await fileToDataUrl(f); preview.src = data; preview.style.display='block';
+  });
+  modalRoot.querySelector('#cancelEdit').addEventListener('click', () => { modalRoot.innerHTML=''; modalRoot.style.display='none'; });
+  modalRoot.querySelector('#saveEdit').addEventListener('click', async () => {
+    const title = modalRoot.querySelector('#editTitle').value.trim();
+    const desc = modalRoot.querySelector('#editDesc').value.trim();
+    const price = parseFloat(modalRoot.querySelector('#editPrice').value||'0');
+    let options = [];
+    try { options = JSON.parse(modalRoot.querySelector('#editOptions').value || '[]'); } catch { toast('Options JSON invalid'); return; }
+    let imgData = p.image || '';
+    const f = modalRoot.querySelector('#editImage').files[0];
+    if (f) imgData = await fileToDataUrl(f);
+    // update product
+    p.title = title; p.description = desc; p.price = price; p.options = options; p.image = imgData;
+    saveProducts(); renderProducts(); modalRoot.innerHTML=''; modalRoot.style.display='none'; toast('Product updated');
+  });
+}
+
+/* Edit UPI modal */
+function openEditUpiModal() {
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h3>Edit UPI</h3>
+        <label>Payee UPI ID (pa)</label><input id="upiPa" type="text" value="${upi.pa||''}" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <label style="margin-top:8px">Payee Name (pn)</label><input id="upiPn" type="text" value="${upi.pn||''}" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button id="saveUpiBtn" class="btn">Save UPI</button>
+          <button id="cancelUpi" class="btn ghost">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modalRoot.style.display='block';
+  modalRoot.querySelector('#cancelUpi').addEventListener('click', () => { modalRoot.innerHTML=''; modalRoot.style.display='none'; });
+  modalRoot.querySelector('#saveUpiBtn').addEventListener('click', () => {
+    upi.pa = modalRoot.querySelector('#upiPa').value.trim();
+    upi.pn = modalRoot.querySelector('#upiPn').value.trim();
+    saveUpi(); modalRoot.innerHTML=''; modalRoot.style.display='none'; toast('UPI updated');
+  });
+}
+
+/* Utility: file to data URL */
+function fileToDataUrl(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+/* Seller password change (optional) - accessible from manage products modal */
+function openChangePasswordModal() {
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h3>Change Seller Password</h3>
+        <label>Current password</label><input id="curPass" type="password" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <label style="margin-top:8px">New password</label><input id="newPass" type="password" style="width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef9" />
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button id="savePass" class="btn">Save</button>
+          <button id="cancelPass" class="btn ghost">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modalRoot.style.display='block';
+  modalRoot.querySelector('#cancelPass').addEventListener('click', () => { modalRoot.innerHTML=''; modalRoot.style.display='none'; });
+  modalRoot.querySelector('#savePass').addEventListener('click', () => {
+    const cur = modalRoot.querySelector('#curPass').value || '';
+    const stored = localStorage.getItem(KEY_SELLER_PASS) || btoa('seller123');
+    if (btoa(cur) !== stored) { toast('Current password incorrect'); return; }
+    const np = modalRoot.querySelector('#newPass').value || '';
+    if (!np) { toast('Enter new password'); return; }
+    localStorage.setItem(KEY_SELLER_PASS, btoa(np));
+    modalRoot.innerHTML=''; modalRoot.style.display='none'; toast('Password changed');
+  });
+}
+
+/* Manage products button also offers change password link */
+function openManageProductsWithPasswordOption() {
+  openManageProducts();
+  // after manage modal opens, add change password button
+  setTimeout(() => {
+    const manageList = modalRoot.querySelector('#manageList');
+    if (manageList) {
+      const footer = document.createElement('div'); footer.style.marginTop='8px';
+      footer.innerHTML = `<button id="changePassBtn" class="btn ghost small">Change Seller Password</button>`;
+      manageList.parentNode.appendChild(footer);
+      footer.querySelector('#changePassBtn').addEventListener('click', () => { modalRoot.innerHTML=''; modalRoot.style.display='none'; openChangePasswordModal(); });
+    }
+  }, 200);
+}
+
+/* Search */
+$('searchInput').addEventListener('input', (e) => renderProducts(e.target.value));
+
+/* Initial render & state */
+function init() {
+  products = readJSON(KEY_PRODUCTS, []);
+  upi = readJSON(KEY_UPI, { pa:'', pn:'' });
+  orders = readJSON(KEY_ORDERS, []);
+  cart = readJSON(KEY_CART, []);
+  renderProducts();
+  renderCart();
+  if (sellerLoggedIn) onSellerLogin(); else onSellerLogout();
+}
+init();
+
+/* Render orders in admin panel when logged in */
+function renderOrders() {
+  if (!sellerLoggedIn) return;
+  const adminArea = $('adminArea');
+  adminArea.innerHTML = '<h4 style="margin-top:8px">Orders</h4>';
+  if (!orders.length) { adminArea.innerHTML += '<div class="small">No orders yet</div>'; return; }
+  orders.forEach(o => {
+    const div = document.createElement('div'); div.className='order-card';
+    div.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong>Order ${o.id}</strong><div class="small">${new Date(o.createdAt).toLocaleString()}</div></div><div style="text-align:right"><div class="small">Status</div><div style="font-weight:800">${o.status}</div></div></div><div style="margin-top:8px" class="small">Items: ${o.items.map(i=>{ const p=products.find(x=>x.id===i.productId); return (p? p.title : i.productId) + ' x' + i.qty; }).join(', ')}</div>`;
+    adminArea.appendChild(div);
+  });
+}
+
+/* Helper: save products to storage */
+function saveProducts() { writeJSON(KEY_PRODUCTS, products); }
+
+/* Expose some admin actions to buttons (after login) */
+document.addEventListener('click', (e) => {
+  if (!sellerLoggedIn) return;
+  if (e.target && e.target.id === 'openAddProduct') openAddProductModal();
+  if (e.target && e.target.id === 'manageProducts') openManageProductsWithPasswordOption();
+  if (e.target && e.target.id === 'editUpi') openEditUpiModal();
+});
+
+/* Utility: read/write JSON */
+function readJSON(k, fallback) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } }
+function writeJSON(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+
+/* Initialize UPI variable for checkout */
+upi = readJSON(KEY_UPI, { pa:'', pn:'' });
+
+/* Render orders on load if seller logged in */
+renderOrders();
+
+</script>
+</body>
+</html>
